@@ -1,0 +1,968 @@
+<data><files><file id="0" name="h.init.py" pos="9">
+print('--------====BSOS 4====--------')
+try:
+	rawRun(rawRead(1)[2])
+	rawRun(rawRead(2)[2])
+except Exception as e:
+	print('Error loading core files!\n' + str(e))
+	return ""
+else:
+	print('Core files loaded!')
+print('Starting shell...')
+try:
+	if (io.run("/h.sys/shell.py") == False):
+		print("Shell Missing!")
+except Exception as e:
+	print('Error running shell!\n' + str(e))
+		</file><file id="1" name="stringPaths.py" pos="9">
+global path2fid
+global path2pos
+global pos2path
+global fid2path
+##DO NOT MODIFY! CORE FILE!
+def path2fid(inp1, inp2=''):
+	if inp1 == '':
+		return False
+	if inp1[0] == '/':
+		inp1 = inp1[1:]
+	if inp1 == '':
+		return False
+	if inp1[-1] == '/':
+		inp1 = inp1[:-1]
+	if inp1 == '':
+		return False
+	if inp2 == '':
+		inp2 = False
+	div = inp1.split('/')
+	if len(div) == 0:
+		return False
+	if div[0] == "..":
+		if len(div) == 1:
+			return False
+		else:
+			return path2fid("/".join(div[1:]), folders[inp2][0])
+	if len(div) == 1:
+		for i in files:
+			if files[i][0]==inp2 and files[i][1]==div[0]:
+				return i
+	else:
+		for i in folders:
+			if folders[i][0]==inp2 and folders[i][1]==div[0]:
+				return path2fid("/".join(div[1:]), i)
+	return False
+	
+def path2pos(inp1, inp2=''):
+	##Why da fuq this returning 11?
+	if inp1 == '':
+		return 0
+	if inp1[0] == '/':
+		inp1 = inp1[1:]
+	if inp1 == '':
+		return 0
+	if inp1[-1] == '/':
+		inp1 = inp1[:-1]
+	if inp1 == '':
+		return False
+	if inp2 == '':
+		inp2 = 0
+	div = inp1.split('/')
+	if len(div) == 0:
+		return False
+	if div[0] == "..":
+		if len(div) == 1:
+			return folders[inp2][0]
+		else:
+			return path2pos("/".join(div[1:]), folders[inp2][0])
+	else:
+		for i in folders:
+			if folders[i][0]==inp2 and folders[i][1]==div[0]:
+				if (len(div) == 1):
+					return i
+				else:
+					return path2pos("/".join(div[1:]), i)
+	return False
+
+def pos2path(inp1):
+	if 0==inp1:
+		return "/"
+	for i in folders:
+		if i == inp1:
+			return pos2path(folders[i][0]) + folders[i][1] + "/"
+	return False
+
+def fid2path(inp1):
+	for i in files:
+		if i == inp1:
+			return pos2path(files[i][0]) + files[i][1]
+	return False
+		</file><file id="2" name="fileIO.py" pos="9">
+global io
+class io:
+	@staticmethod
+	def hasinvalidchar(s):
+		invalid = "/!* "
+		for i in invalid:
+			if i in s:
+				return True
+		return False
+		
+	@staticmethod
+	def existsfile(path):
+		if type(path2fid(path)) == type(False):
+			return False
+		return True
+
+	@staticmethod
+	def existsfolder(path):
+		if type(path2pos(path)) == type(False):
+			return False
+		return True
+
+	@staticmethod
+	def read(path):
+		a = path2fid(path)
+		if type(a) != type(False):
+			return rawRead(a)[2]
+			return True
+		return False
+	
+	@staticmethod
+	def write(path, data):
+		a = path2fid(path)
+		if type(a) != type(False):
+			b = rawRead(a)
+			rawWrite(a, b[0], b[1], data)
+			return True
+		return False
+	
+	@staticmethod
+	def rename(path, name):
+		if io.hasinvalidchar(name):
+			return False
+		a = path2fid(path)
+		if type(a) != type(False):
+			b = rawRead(a)
+			rawWrite(a, b[0], name, b[2])
+			return True
+		return False
+	
+	@staticmethod
+	def move(filepath, folderpath):
+		a = path2fid(filepath)
+		b = path2pos(folderpath)
+		if (type(a) == type(False) or type(b) == type(False)):
+			return False
+		c = rawRead(a)
+		rawWrite(a, b, c[1], c[2]) 
+		return True
+	
+	@staticmethod
+	def listboth(folderpath):
+		ls = io.listfiles(folderpath)
+		ls += [False]
+		ls += io.listfolders(folderpath)
+		return ls
+	
+	@staticmethod
+	def listfiles(folderpath):
+		a = path2pos(folderpath)
+		if type(a) == type(False):
+			return []
+		ls = []
+		for i in files:
+			if files[i][0] == a:
+				ls.append(files[i][1])
+		return ls
+	
+	@staticmethod
+	def listfolders(folderpath):
+		a = path2pos(folderpath)
+		if (type(a) == type(False)):
+			return []
+		ls = []
+		for i in folders:
+			if folders[i][0] == a and i != 0:
+				ls.append(folders[i][1])
+		return ls
+	
+	@staticmethod
+	def makefile(folderpath, name):
+		if io.hasinvalidchar(name):
+			return False
+		a = path2pos(folderpath)
+		if type(a) == type(False):
+			return False
+		if name in io.listboth(folderpath):
+			return False
+		rawMakeFile(a, name, "")
+		return True
+	
+	@staticmethod
+	def makefolder(folderpath, name):
+		if io.hasinvalidchar(name):
+			return False
+		a = path2pos(folderpath)
+		if type(a) == type(False):
+			return False
+		if name in io.listboth(folderpath):
+			return False
+		rawMakeDir(a, name)
+		return True
+	
+	@staticmethod
+	def renamefolder(path, name):
+		if io.hasinvalidchar(name):
+			return False
+		a = path2pos(path)
+		if type(a) != type(False):
+			b = rawReadFolder(a)
+			rawWriteFolder(a, b[0], name)
+			return True
+		return False
+	
+	@staticmethod
+	def movefolder(folderpath, newpath):
+		a = path2pos(folderpath)
+		b = path2pos(newpath)
+		if type(a) != type(False) and type(a) != type(False):
+			c = rawReadFolder(a)
+			rawWriteFolder(a, b, c[1])
+			return True
+		return False
+	
+	@staticmethod
+	def deletefile(path):
+		a = path2fid(path)
+		if (type(a) == type(False)):
+			return False
+		else:
+			rawRemoveFile(a)
+			return True
+	
+	@staticmethod
+	def deletefolder(path):
+		a = path2pos(path)
+		if (type(a) == type(False)):
+			return False
+		else:
+			rawRemoveFolder(a)
+			return True
+	
+	@staticmethod
+	def run(path, inp1 = '', inp2 = '', inp3 = '', inp4 = ''):
+		a = path2fid(path)
+		if (type(a) == type(False)):
+			return False
+		else:
+			return rawRun(io.read(path), inp1, inp2, inp3, inp4)
+	
+	@staticmethod
+	def normalize(s):
+		a = path2fid(s)
+		b = path2pos(s)
+		if (type(a) == bool and type(b) == bool):
+			return False
+		if (type(a) == bool):
+			return pos2path(b)
+		return fid2path(a)
+		</file><file id="3" name="shell.py" pos="1">
+##Startup sequence
+io.run("/h.sys/settings.py")
+
+
+settings.set('userpos', '/user/')
+if not settings.get("shellcolor"):
+	settings.set("shellcolor", "1F")
+if not settings.get("envpath"):
+	settings.set("envpath", "/bin/")
+if not settings.get("runwith"):
+	settings.set("runwith", "py!/bin/runp.py")
+interpreters = {".py": io.run}
+settings.set("showHidden", "0")
+try:
+	io.run("/h.sys/startup.py")
+except Exception as e:
+	print("Could not run startup: " + str(e))
+
+##User input
+inp = ""
+while (inp != 'exit' and inp != 'shutlinenum = min(linenum + 1, len(lines) - 1)\nnorm' and inp != 'reboot'):
+	userpos = settings.get('userpos')
+	if not io.existsfolder(userpos):
+		print("Warning: \"" + userpos + "\" does not exist.\nYou have been moved to root")
+		settings.set('userpos', '/')
+		userpos = '/'
+	executed = 0
+	os.system("color " + settings.get("shellcolor"))
+	inp = input(userpos + ":")
+	div = inp.split(' ')
+	##Action 1: enviroment paths
+	if ('/' not in div[0]):
+		for path in settings.get("envpath").split('/n'):
+			if io.existsfile(io.normalize(path) + div[0] + ".py"):
+				inp2 = ""
+				if len(div) &gt; 1:
+					inp2 = " ".join(inp.split(' ')[1:])
+				try:
+					if type(io.run(io.normalize(path) + div[0] + ".py", userpos, inp2)) != type(False):
+						executed = 1
+				except Exception as e:
+					print('Error: ' + str(e))
+					executed = 1
+	if './' == inp[0:2]:
+		inp = userpos + inp[2:]
+		div = inp.split(' ')
+	if io.existsfile(div[0]):
+		for runwith in settings.get("runwith").split('\n'):
+			ending = runwith.split('!')[0]
+			if div[0][len(div[0])-len(ending):] == ending:
+				inp2 = ""
+				if len(div) &gt; 1:
+					inp2 = " ".join(inp.split(' ')[1:])
+				try:
+					if type(io.run(runwith.split('!')[1], userpos, inp2, io.normalize(div[0]))) != type(False):
+						executed = 1
+					else:
+						print(runwith.split('!')[1] + ' Could not be run')
+						executed = 1
+				except Exception as e:
+					print('Error: ' + str(e))
+					executed = 1
+			if executed == 1:
+				break
+		if executed == 0:
+			executed = 1
+			print("Unrecognised File Type")
+	if not executed:
+		print("Command not recognized")
+
+
+		</file><file id="4" name="ls.py" pos="3">
+ls = []
+if inp2 != "":
+	if ('/' != inp2[0]):
+		inp2 = inp1 + inp2
+	if (io.existsfolder(inp2)):
+		ls = io.listboth(inp2)
+	else:
+		print("\"" + inp2 + "\" is not a valid directory")
+		return ""
+else:
+	ls = io.listboth(inp1)
+s = ""
+for i in ls:
+	if type(i)==type(False):
+		continue
+	if (settings.get("showHidden")=='0') and i[0:2]=="h.":
+		continue
+	s += i + "\n"
+print(s[:-1])
+		</file><file id="5" name="cd.py" pos="3">
+if inp2 != "":
+	if ('/' != inp2[0]):
+		inp2 = inp1 + inp2
+	if (io.existsfolder(inp2)):
+		settings.set('userpos', pos2path(path2pos(inp2)))
+	else:
+		print("\"" + inp2 + "\" is not a valid directory")
+		return ""
+		</file><file id="6" name="pwd.py" pos="3">
+print(inp1)
+		</file><file id="7" name="echo.py" pos="3">
+print(inp2)
+		</file><file id="8" name="help.py" pos="3">
+if inp2 == "":
+	ls = io.listfiles("/bin/")
+	s = ""
+	for i in ls:
+		s += i[:-3] + " "
+	print(s)
+else:
+	inp2 = inp2.lower()
+	if io.existsfile('/bin/helptexts/' + inp2 + '.txt'):
+		print(io.read('/bin/helptexts/' + inp2 + '.txt'))
+	else:
+		print('Could not find help for ' + inp2)
+
+</file><file id="9" name="cat.py" pos="3">
+div = inp2.split(' ')
+inp2 = div[0]
+if ('/' != inp2[0]):
+	inp2 = inp1 + inp2
+
+if (type(io.read(inp2)) != type(False)):
+	if len(div) &gt; 1 and div[1].isdigit():
+		if int(div[1]) &lt; len(io.read(inp2).split('\n')):
+			print(io.read(inp2).split('\n')[int(div[1])])
+		else:
+			print("Line number out of range\nTotal number of lines: " + str(len(io.read(inp2).split('\n'))))
+	else:
+		print(io.read(inp2))
+else:
+	print("\"" + inp2 + "\" is not a valid directory")
+		</file><file id="10" name="setdata.py" pos="3">
+div = inp2.split(' ')
+text = " ".join(div[1:])
+inp2 = div[0]
+if ('/' != inp2[0]):
+	inp2 = inp1 + inp2
+if (type(io.read(inp2)) != type(False)):
+	io.write(inp2, text)
+else:
+	if (io.hasinvalidchar(inp2.split('/')[-1])):
+		print("\"" + inp2 + "\" has invalid characters")
+	elif io.makefile("/".join(inp2.split('/')[:-1]) + "/", inp2.split('/')[-1]) == True:
+		io.write(inp2, text)
+	else:
+		print("\"" + inp2 + "\" is not a valid directory")
+		</file><file id="11" name="reboot.py" pos="3">
+global boot
+boot = True
+		</file><file id="12" name="mkdir.py" pos="3">
+if ('/' != inp2[0]):
+	inp2 = inp1 + inp2
+target = '/'.join(inp2.split('/')[:-1])
+name = inp2.split('/')[-1]
+##print("T:" + target + "\nN:" + name)
+if io.hasinvalidchar(name):
+	print("Name has invalid characters")
+elif io.existsfolder(target):
+	if io.existsfile(inp2) or io.existsfolder(inp2):
+		print("Item already exists with that name")
+	else:
+		if not io.makefolder(target, name):
+			print("An unknown error occured")
+else:
+	print("Can not make folder there")
+		</file><file id="13" name="lin.py" pos="3">
+import msvcrt as m
+
+os.system('color 30')
+
+linenum = 0
+charnum = 0
+kchar = '&lt;'
+comptabs = False
+
+lines = ['']
+
+if inp3 != '':
+	inp2 = inp3
+if (len(inp2) &gt; 0 and '/' != inp2[0]):
+	inp2 = inp1 + inp2
+if io.existsfile(inp2):
+	lines = io.read(inp2).split('\n')
+
+def cls():	
+	os.system('cls')
+	
+def pad(i, m = 5, c=' '):
+	s = str(i)
+	while len(s) &lt; m:
+		s = c + s
+	return s
+
+def disp(sl = 18):
+	mi = max(linenum - sl // 2, 0)
+	ma = min(mi + sl, len(lines) - 1)
+	mi = max(ma - sl, 0)
+	printing = ''
+	for i in range(mi, ma + 1):
+		toshow = lines[i]
+		t = "[" + pad(i) + "]"
+		if comptabs:
+			j = 0
+			while len(toshow) &gt; 0 and toshow[0] == '\t':
+				j += 1
+				toshow = toshow[1:]
+			for _ in range(j):
+				toshow = '|' + toshow
+			##t += "[" + pad(j, 2, '0') + "]"
+		
+		if (i == linenum):
+			t += '&gt;&gt; '
+			if charnum == 0:
+				t += kchar + toshow
+			elif charnum == len(toshow):
+				t += toshow + kchar
+			else:
+				t += toshow[:charnum] + kchar + toshow[charnum:]
+		else:
+			t += '   ' + toshow
+
+		printing += t + '\n'
+	print(printing)
+
+def topbar():
+	fname = inp2
+	if fname == '':
+		fname = 'UNNAMED'
+	tb = '[FILE: \'' + fname + '\'   LINES:' + str(len(lines)) + '    CTRL+Q FOR HELP]'
+	print(tb)
+
+
+def setdata(path, text):
+	if (type(io.read(path)) != type(False)):
+		return io.write(inp2, text)
+	else:
+		if (io.hasinvalidchar(path.split('/')[-1])):
+			print("\"" + path + "\" has invalid characters")
+			return False
+		elif io.makefile("/".join(path.split('/')[:-1]) + "/", path.split('/')[-1]) == True:
+			return io.write(path, text)
+		else:
+			print("\"" + path + "\" is not a valid directory")
+			return False
+	
+		
+def saveas():
+	print('work in progress')
+	
+def saveacopy():
+	print('work in progress')
+	
+def load():
+	print('work in progress')
+	
+def replace():
+	print('work in progress')
+
+def help():
+	p = ''
+	while p == '':
+		cls()
+		print('Functions:\nCTRL+\n\tX:Exit\n\tQ:Show this\n\tS:Save\n\tL:Load\n\tR:Replace All\n\tA:Save As\n\tD:Save A Copy\n\n\tT:Compact Tabs')
+		print('\n\n\nPress any key to continue...')
+		p = m.getch()
+		if p == b'\xe0':
+			while p == b'\xe0':
+				p = m.getch()
+			p = ''
+	
+running = True
+p = None
+while (running):
+	cls()
+	topbar()
+	disp()
+	##print("CHR:" + str(p))
+	p = m.getch()
+	if p == b'\x18': #Ctr X
+		running = False
+		cls()
+	elif p == b'\xe0':
+		while p == b'\xe0':
+			p = m.getch()
+			##print(str(p))
+		##m.getch()
+		if p == b't':
+			if charnum == 0:
+				charnum = min(charnum + 1, len(lines[linenum]))
+				if charnum == 0:
+					continue
+			letter = lines[linenum][charnum - 1] != ' '
+			letterprev = letter
+			while charnum != len(lines[linenum]) and not (not letter and letterprev != letter):
+				letterprev = letter
+				letter = lines[linenum][charnum - 1] != ' '
+				charnum = min(charnum + 1, len(lines[linenum]))
+			if charnum != len(lines[linenum]):
+				charnum = max(charnum - 1, 0)
+		if p == b's':
+			letter = lines[linenum][charnum - 1] != ' '
+			letterprev = letter
+			while charnum != 0 and not (not letter and letterprev != letter):
+				letterprev = letter
+				letter = lines[linenum][charnum - 1] != ' '
+				charnum = max(charnum - 1, 0)
+			if charnum != 0:
+				charnum = min(charnum + 1, len(lines[linenum]))
+		if p == b'\x8d':
+			linenum = max(linenum - 10, 0)
+		if p == b'\x91':
+			linenum = min(linenum + 10, len(lines) - 1)
+		if p == b'S':
+			if charnum != len(lines[linenum]):
+				lines[linenum] =  lines[linenum][:charnum] + lines[linenum][charnum + 1:]
+			elif linenum != len(lines) - 1:
+				move = lines[linenum + 1]
+				lines.remove(move)
+				lines[linenum] += move
+		if p == b'P':
+			linenum = min(linenum + 1, len(lines) - 1)
+			charnum = min(max(charnum, 0), len(lines[linenum]))
+		if p == b'H':
+			linenum = max(linenum - 1, 0)
+			charnum = min(max(charnum, 0), len(lines[linenum]))
+		if p == b'K': 
+			charnum = max(charnum - 1, 0)
+		if p == b'M':
+			charnum = min(charnum + 1, len(lines[linenum]))
+	elif p == b'\r' or p == b'\n':
+		moved = lines[linenum][charnum:]
+		lines[linenum] =  lines[linenum][:charnum]
+		lines.insert(linenum + 1, moved)
+		linenum = min(linenum + 1, len(lines) - 1)
+		charnum = min(max(charnum, 0), len(lines[linenum]))
+		charnum = 0
+	elif p == b'\x13': #S
+		if (inp2 == ''):
+			cls()
+			asking = True
+			while asking:
+				inp2 = input("\n\nInput a valid file path:")
+				cls()
+				if (len(inp2) &gt; 0 and '/' != inp2[0]):
+					inp2 = inp1 + inp2
+				if io.existsfile(inp2):
+					if input("\nFile already exists\n[y/n] Overwrite?")[0] == 'y':
+						asking = False
+				elif io.existsfolder('/'.join(inp2.split('/')[:-1])):
+					if io.existsfolder(inp2):
+						print("A folder already has that name\n")
+					elif io.hasinvalidchar(inp2.split('/')[-1]):
+						print("Name can't have invalid characters")
+					else:
+						asking = False
+		if not setdata(inp2, '\n'.join(lines)):
+			cls()
+			input("An error has occured\n\nPress enter to continue...")
+	elif p == b'\x01': #A
+		cls()
+		asking = True
+		while asking:
+			aspath = input("\n\nInput a valid file path:")
+			cls()
+			if (len(aspath) &gt; 0 and '/' != aspath[0]):
+				aspath = inp1 + aspath
+			if io.existsfile(aspath):
+				if input("\nFile already exists\n[y/n] Overwrite?")[0] == 'y':
+					asking = False
+			elif io.existsfolder('/'.join(aspath.split('/')[:-1])):
+				if io.existsfolder(aspath):
+					print("A folder already has that name\n")
+				elif io.hasinvalidchar(aspath.split('/')[-1]):
+					print("Name can't have invalid characters")
+				else:
+					asking = False
+		inp2 = aspath
+		if not setdata(aspath, '\n'.join(lines)):
+			cls()
+			input("An error has occured\n\nPress enter to continue...")
+	elif p == b'\x04': #D
+		cls()
+		asking = True
+		while asking:
+			aspath = input("\n\nInput a valid file path:")
+			cls()
+			if (len(aspath) &gt; 0 and '/' != aspath[0]):
+				aspath = inp1 + aspath
+			if io.existsfile(aspath):
+				if input("\nFile already exists\n[y/n] Overwrite?")[0] == 'y':
+					asking = False
+			elif io.existsfolder('/'.join(aspath.split('/')[:-1])):
+				if io.existsfolder(aspath):
+					print("A folder already has that name\n")
+				elif io.hasinvalidchar(aspath.split('/')[-1]):
+					print("Name can't have invalid characters")
+				else:
+					asking = False
+		if not setdata(aspath, '\n'.join(lines)):
+			cls()
+			input("An error has occured\n\nPress enter to continue...")
+	elif p == b'\x0c': #L
+		cls()
+		asking = True
+		while asking:
+			aspath = input("\n\nInput a valid file path:")
+			cls()
+			if (len(aspath) &gt; 0 and '/' != aspath[0]):
+				aspath = inp1 + aspath
+			if io.existsfile(aspath):
+				asking = False
+			elif io.existsfolder(aspath):
+				print("A folder already has that name\n")
+			else:
+				print("Could not find file with that path\n")
+		inp2 = aspath
+		lines = io.read(inp2).split('\n')
+	elif p == b'\x12': #R
+		fulltext = '\n'.join(lines)
+		cls()
+		print("What to replace?") ##209
+		replace_from = input()
+		cls()
+		print('Found ' + str(fulltext.count(replace_from)) + ' occurrences of \'' + replace_from + '\'\n\nWhat to replace with?')
+		replace_to = input()
+		lines = fulltext.replace(replace_from, replace_to).split('\n')
+		linenum = min(max(linenum, 0), len(lines) - 1)
+		charnum = min(max(charnum, 0), len(lines[linenum]))
+	elif p == b'\x14': #T
+		comptabs = not comptabs
+	elif p == b'\x11': #Q
+			help()
+	elif p == b'\x08':
+		if charnum != 0:
+			lines[linenum] =  lines[linenum][:charnum - 1] + lines[linenum][charnum:]
+			charnum = max(charnum - 1, 0)
+		elif linenum != 0:
+			move = lines[linenum]
+			del lines[linenum]
+			linenum = max(linenum - 1, 0)
+			charnum = min(max(charnum, 0), len(lines[linenum]))
+			charnum = len(lines[linenum])
+			lines[linenum] += move
+	else:
+		if not (str(p)[:4] == 'b\'\\x'):
+			lines[linenum] =  lines[linenum][:charnum] + p.decode('UTF-8') + lines[linenum][charnum:]
+			charnum = min(charnum + 1, len(lines[linenum]))
+
+
+		</file><file id="14" name="backup.py" pos="3">
+_rawStore()
+print("Backed Up")
+</file><file id="15" name="startup.py" pos="1">
+if (settings.get("toldversion") == "0"):
+	print(io.read("/h.sys/startup.txt"))
+	settings.set("toldversion", "1")
+		</file><file id="16" name="startup.txt" pos="1">Version 1:
+Fully stand alone with functioning text editor
+Type 'help' for help
+Type 'help help' for help on help</file><file id="17" name="settings.py" pos="1">
+global settings
+class settings:
+	@staticmethod
+	def get(s):
+		if io.existsfile("/settings/" + s):
+			return io.read("/settings/" + s)
+		return False
+	
+	@staticmethod
+	def set(s, d):
+		if not io.existsfile("/settings/" + s):
+			io.makefile("/settings/", s)
+		io.write("/settings/" + s, d)
+		</file><file id="18" name="toldversion" pos="11">1</file><file id="19" name="p.py" pos="3">
+div = inp2.split('\n')
+div[-1] = "return " + div[-1]
+inp2 = "\n".join(div)
+inp2 = inp2.replace('\n', '\n\t')
+exec("def function_p():\n\t" + inp2 + "\n\nsettings.set(\"p_result\", str(function_p()))")
+print(settings.get("p_result"))
+    </file><file id="20" name="reload.py" pos="3">
+_rawLoad()
+print("Reloaded")
+		</file><file id="21" name="cls.py" pos="3">
+os.system('cls')</file><file id="22" name="rm.py" pos="3">
+if ('/' != inp2[0]):
+	inp2 = inp1 + inp2
+if io.existsfile(inp2):
+	io.deletefile(inp2)
+	print("Deleted file: " + inp2)
+elif io.existsfolder(inp2):
+	io.deletefolder(inp2)
+	print("Deleted folder: " + inp2)
+else:
+	print("Invalid file/folder")
+		</file><file id="23" name="p_result" pos="11">2</file><file id="24" name="lsv.py" pos="3">
+ls = []
+if inp2 != "":
+	if ('/' != inp2[0]):
+		inp2 = inp1 + inp2
+	if (io.existsfolder(inp2)):
+		ls = io.listboth(inp2)
+	else:
+		print("\"" + inp2 + "\" is not a valid directory")
+		return ""
+else:
+	ls = io.listboth(inp1)
+	inp2 = inp1
+s = "[FILES]\n"
+fi = True
+inp2 = io.normalize(inp2)
+for i in ls:
+	if type(i)==type(False):
+		s += '[FOLDERS]\n'
+		fi = False
+		continue
+	if (settings.get("showHidden")=='0') and i[0:2]=="h.":
+		continue
+	if fi:
+		s += "[FID=" + str(path2fid(inp2+i)) + ",SIZE="+ str(len(io.read(inp2+i).split('\n'))) +"L] " + i + "\n"
+	else:
+		s += "[POS=" + str(path2pos(inp2+i)) + ",SUB="+ str(len(io.listboth(inp2+i)) - 1) +"I] " + i + "\n"
+print(s[:-1])
+		</file><file id="25" name="mv.py" pos="3">
+div = inp2.split(' ')
+if len(div) != 2:
+	print("Invalid input!")
+else:
+	for i in range(2):
+		if ('/' != div[i][0]):
+			div[i] = inp1 + div[i]
+	a = io.existsfile(div[0])
+	b = io.existsfolder(div[0])
+	if not (a or b):
+		print('Item \'' + div[0] + '\' does not exist')
+	elif not io.existsfolder(div[1]):
+		print('Folder \'' + div[1] + '\' does not exist')
+	else:
+		target = io.normalize(div[1]) + div[0].split('/')[-1]
+		if io.existsfile(target) or io.existsfolder(target):
+			print('Item with same name exists in target folder!')
+		else:
+			c = False
+			if (a):
+				c = io.move(div[0], div[1])
+			else:
+				c = io.movefolder(div[0], div[1])
+			if not c:
+				print('An unknown error occured')
+</file><file id="26" name="showHidden" pos="11">0</file><file id="27" name="envpath" pos="11">/bin/</file><file id="28" name="runwith" pos="11">.py!/bin/runp.py
+.txt!/bin/lin.py</file><file id="29" name="linlines" pos="11">18</file><file id="30" name="runp.py" pos="3">io.run(inp3, inp1, inp2)</file><file id="31" name="pi.txt" pos="6">3.14159265358979323846</file><file id="32" name="userpos" pos="11">/user/programs/</file><file id="33" name="rn.py" pos="3">
+div = inp2.split(' ')
+if len(div) != 2:
+	print("Invalid input!")
+else:
+	if ('/' != div[0][0]):
+			div[0] = inp1 + div[0]
+	a = io.existsfile(div[0])
+	b = io.existsfolder(div[0])
+	if not (a or b):
+		print('Item \'' + div[0] + '\' does not exist')
+	elif io.hasinvalidchar(div[1]):
+		print('Target name has invalid characters!')
+	else:
+		target = io.normalize('/'.join(div[0].split('/')[:-1])) + div[1]
+		if io.existsfile(target) or io.existsfolder(target):
+			print('Item with same name exists in target folder!')
+		else:
+			c = False
+			if (a):
+				c = io.rename(div[0], div[1])
+			else:
+				c = io.renamefolder(div[0], div[1])
+			if not c:
+				print('An unknown error occured')
+</file><file id="34" name="help.txt" pos="2">Syntax:
+Help:
+	Shows list of items in /bin/
+Help &lt;string&gt;:
+	Displays a help text for &lt;string&gt;
+</file><file id="35" name="ls.txt" pos="2">Lists the items in a directory
+Syntax
+ls:
+	Lists the current directory
+ls &lt;path&gt;:
+	Lists the &lt;path&gt; directory</file><file id="36" name="cd.txt" pos="2">Moves selected directory
+cd &lt;path&gt;:
+	Moves to &lt;path&gt;
+
+&lt;path&gt; options:
+	".." moves back a directory</file><file id="37" name="pwd.txt" pos="2">Prints the directory.</file><file id="38" name="echo.txt" pos="2">Syntax
+echo &lt;string&gt;
+	Prints string</file><file id="39" name="cat.txt" pos="2">Prints the contents of a file
+Syntax
+cat &lt;path&gt;</file><file id="40" name="setdata.txt" pos="2">Sets the data for the file
+Syntax
+setdata &lt;path&gt; &lt;data&gt;</file><file id="41" name="reboot.txt" pos="2">Restarts the shell and reloads the config files</file><file id="42" name="mkdir.txt" pos="2">Creates a directory
+syntax
+mkdir &lt;path&gt;</file><file id="43" name="lin.txt" pos="2">Text editor
+press ctrl+q in lin for info
+Syntax
+lin
+	opens lin
+lin &lt;path&gt;
+	opens file</file><file id="44" name="p.txt" pos="2">Runs python code
+Returns last line
+Use \n and \t for whitespace
+Bug: must escape " character (ei. " -&gt; \")
+Syntax:
+P &lt;code&gt;</file><file id="45" name="reload.txt" pos="2">Reloads the files from the data.xml</file><file id="46" name="cls.txt" pos="2">Clears the screen</file><file id="47" name="rm.txt" pos="2">Removes an item
+Syntax:
+rm &lt;path&gt;
+	removes the file or folder
+
+Warning: Subfiles and Subfolders are also deleted when deleting a folder</file><file id="48" name="lsv.txt" pos="2">Lists the items in a directory
+Includes info on each item
+For files:
+	*FID - File ID
+	*SIZE - Line count (L=Lines)
+For folders:
+	*POS - Folder ID
+	*SUB - Subitems
+Syntax
+lsv
+	lists items at current path
+lsv &lt;path&gt;
+	lists items at &lt;path&gt;</file><file id="49" name="mv.txt" pos="2">Moves an item to a path
+Syntax
+mv &lt;path&gt; &lt;dir&gt;
+	moves an item (file or folder) &lt;path&gt; to a new directory &lt;dir&gt;</file><file id="50" name="rn.txt" pos="2">Renames an item
+Syntax
+rn &lt;path&gt; &lt;name&gt;
+	renames a folder or file to a new name &lt;name&gt;</file><file id="51" name="shellcolor" pos="11">80</file><file id="52" name="colorRed.txt" pos="8">4F</file><file id="53" name="colorAOTU.txt" pos="8">5B</file><file id="54" name="colorNice.txt" pos="8">CF</file><file id="55" name="colorGreen.txt" pos="8">2F</file><file id="56" name="test.py" pos="4">print('hello world')</file><file id="57" name="chartest.py" pos="6">import msvcrt as m
+p = ''
+while str(p) != "b'\\x01'":
+	p = m.getch()
+	print(str(p))</file><file id="58" name="zynk.py" pos="7">import time
+import msvcrt as m
+os.system('color 2F')
+def cls():
+	os.system('cls')
+cls()
+def inpchar():
+	return m.getch().decode('utf-8')
+def inp(s):
+	return input(s)
+def slow(text, sec):
+	perChar = sec / len(text)
+	for i in text:
+		print(i, end='', flush=True)
+		time.sleep(perChar)
+def nl(k=1):
+	for i in range(k):
+		print('')
+cls()
+slow("WELCOME TO ", 1.5)
+slow("Z Y N K", 2)
+nl(2)
+slow("You are in a   ", 1)
+slow("f o r e s t ", 2)
+slow("\nBy the look of things, it is fall.\nThere are many multicolored leaves decorating the grass.", 5)
+slow("\n\nThere is a flute by the roots of a near by tree.", 5)
+slow('\n\n\nA squirel?', 6)
+slow('\n ye s.', 6)
+slow('\n', 4)
+slow('\nTEH SQUIREL GRAB THE FLUIT??', 0.5)
+nl(2)
+input('end...')
+cls()</file><file id="59" name="no" pos="0">import time
+import msvcrt as m
+os.system('color 2F')
+def cls():
+	os.system('cls')
+cls()
+def inpchar():
+	return m.getch().decode('utf-8')
+def inp(s):
+	return input(s)
+def slow(text, sec):
+	perChar = sec / len(text)
+	for i in text:
+		print(i, end='', flush=True)
+		time.sleep(perChar)
+def nl(k=1):
+	for i in range(k):
+		print('')
+cls()
+slow("WELCOME TO ", 1.5)
+slow("Z Y N K", 2)
+nl(2)
+slow("You are in a   ", 1)
+slow("f o r e s t ", 1.2)
+slow("\nBy the look of things, it is fall.\nThere are many multicolored leaves decorating the grass.", 3)
+slow("\n\nThere is a flute by the roots of a near by tree.", 2)
+slow('\n\n\n')
+nl(2)
+input('end...')</file></files><folders><folder id="0" pos="0" /><folder id="1" pos="0">h.sys</folder><folder id="2" pos="3">helptexts</folder><folder id="3" pos="0">bin</folder><folder id="4" pos="0">user</folder><folder id="5" pos="6">saves</folder><folder id="6" pos="4">documents</folder><folder id="7" pos="4">programs</folder><folder id="8" pos="6">colors</folder><folder id="9" pos="1">h.core</folder><folder id="10" pos="4">desktop</folder><folder id="11" pos="0">settings</folder><folder id="12" pos="4">media</folder></folders></data>
